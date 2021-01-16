@@ -77,10 +77,8 @@ data:
                 url:
                     scheme: "{{ $.Values.elasticsearch.scheme }}"
                     host: "{{ $.Values.elasticsearch.host }}:{{ $.Values.elasticsearch.port }}"
-                username: "{{ $.Values.elasticsearch.username }}"
-                password: "{{ $.Values.elasticsearch.password }}"
                 indices:
-                    visibility: "{{ $.Values.elasticsearch.visibilityIndex }}"
+                    visibility: temporal-visibility-dev
         {{- end }}
 
     global:
