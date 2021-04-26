@@ -66,9 +66,44 @@ server:
   affinity: {}
   additionalVolumes: []
   additionalVolumeMounts: []
+  additionalEnvVars: []
+  additionalTctlEnvVars: []
+  additionalWebEnvVars: []
 
   config:
     logLevel: "debug,info"
+
+    tls: 
+      enabled: false
+      server:
+        certFile: ""
+        keyFile: ""
+        requireClientAuth: true
+        clientCaFiles: []
+      client:
+        serverName: ""
+        rootCaFiles: []
+      internode:
+        enabled: true
+        server:
+          certFile: ""
+          keyFile: ""
+          requireClientAuth: true
+          clientCaFiles: []
+        client:
+          serverName: ""
+          rootCaFiles: []
+      frontend:
+        enabled: true
+        server:
+          certFile: ""
+          keyFile: ""
+          requireClientAuth: true
+          clientCaFiles: []
+        client:
+          serverName: ""
+          rootCaFiles: []
+
 
     # IMPORTANT: This value cannot be changed, once it's set.
     numHistoryShards: 512
