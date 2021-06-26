@@ -38,7 +38,6 @@ spec:
     spec:
       restartPolicy: "OnFailure"
       initContainers:
-        {{- if or .Values.cassandra.enabled }}
         {{- if .Values.cassandra.enabled }}
         - name: check-cassandra-service
           image: busybox
@@ -56,6 +55,9 @@ spec:
           {{- if eq (include "temporal.persistence.driver" (list $ $store)) "cassandra" }}
           command: ['sh', '-c', 'temporal-cassandra-tool create -k {{ $storeConfig.cassandra.keyspace }} --replication-factor {{ $storeConfig.cassandra.replicationFactor }}']
           {{- end }}
+          {{- if eq (include "temporal.persistence.driver" (list $ $store)) "sql" }}
+          command: ['sh', '-c', 'temporal-sql-tool create-database -database {{ $storeConfig.sql.database }}']
+          {{- end }}
           env:
             {{- if eq (include "temporal.persistence.driver" (list $ $store)) "cassandra" }}
             - name: CASSANDRA_HOST
@@ -70,12 +72,31 @@ spec:
             {{- end }}
             {{- if $storeConfig.cassandra.password }}
             - name: CASSANDRA_PASSWORD
-              value: {{ $storeConfig.cassandra.password }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "temporal.persistence.secretName" (list $ $store) }}
+                  key: {{ include "temporal.persistence.secretKey" (list $ $store) }}
             {{- end }}
             {{- end }}
-        {{- end }}
-        {{- else }}
-          []
+            {{- if eq (include "temporal.persistence.driver" (list $ $store)) "sql" }}
+            - name: SQL_HOST
+              value: {{ include "temporal.persistence.sql.host" (list $ $store) }}
+            - name: SQL_PORT
+              value: {{ include "temporal.persistence.sql.port" (list $ $store) | quote }}
+            - name: SQL_PLUGIN
+              value: {{ $storeConfig.sql.driver }}
+            {{- if $storeConfig.sql.user }}
+            - name: SQL_USER
+              value: {{ $storeConfig.sql.user }}
+            {{- end }}
+            {{- if $storeConfig.sql.password }}
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "temporal.persistence.secretName" (list $ $store) }}
+                  key: {{ include "temporal.persistence.secretKey" (list $ $store) }}
+            {{- end }}
+            {{- end }}
         {{- end }}
       containers:
         {{- range $store := (list "default" "visibility") }}
@@ -98,7 +119,37 @@ spec:
             {{- end }}
             {{- if $storeConfig.cassandra.password }}
             - name: CASSANDRA_PASSWORD
-              value: {{ $storeConfig.cassandra.password }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "temporal.persistence.secretName" (list $ $store) }}
+                  key: {{ include "temporal.persistence.secretKey" (list $ $store) }}
+            {{- end }}
+            {{- end }}
+            {{- if eq (include "temporal.persistence.driver" (list $ $store)) "sql" }}
+            - name: SQL_HOST
+              value: {{ include "temporal.persistence.sql.host" (list $ $store) }}
+            - name: SQL_PORT
+              value: {{ include "temporal.persistence.sql.port" (list $ $store) | quote }}
+            - name: SQL_PLUGIN
+              value: {{ $storeConfig.sql.driver }}
+            {{- if $storeConfig.sql.user }}
+            - name: SQL_USER
+              value: {{ $storeConfig.sql.user }}
+            {{- end }}
+            {{- if $storeConfig.sql.password }}
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "temporal.persistence.secretName" (list $ $store) }}
+                  key: {{ include "temporal.persistence.secretKey" (list $ $store) }}
+            {{- end }}
+            {{- if eq $store "default" }}
+            - name: SQL_DATABASE
+              value: temporal
+            {{- end }}
+            {{- if eq $store "visibility" }}
+            - name: SQL_DATABASE
+              value: temporal_visibility
             {{- end }}
             {{- end }}
         {{- end }}
@@ -166,7 +217,18 @@ spec:
           image: "{{ $.Values.admintools.image.repository }}:{{ $.Values.admintools.image.tag }}"
           imagePullPolicy: {{ $.Values.admintools.image.pullPolicy }}
           {{- if eq (include "temporal.persistence.driver" (list $ $store)) "cassandra" }}
+          # command: ["temporal-cassandra-tool", "update-schema", "-d", "/etc/temporal/schema/cassandra/{{ include "temporal.persistence.schema" $store }}/versioned"]
           command: ['sh', '-c', 'temporal-cassandra-tool update-schema -d /etc/temporal/schema/cassandra/{{ include "temporal.persistence.schema" $store }}/versioned']
+          {{- end }}
+          {{- if eq (include "temporal.persistence.driver" (list $ $store)) "sql" }}
+          {{- if eq (include "temporal.persistence.sql.driver" (list $ $store)) "mysql" }}
+          # command: ["temporal-sql-tool", "update-schema", "-d", "/etc/temporal/schema/mysql/v57/{{ include "temporal.persistence.schema" $store }}/versioned"]
+          command: ['sh', '-c', 'temporal-sql-tool update-schema -d /etc/temporal/schema/mysql/v57/{{ include "temporal.persistence.schema" $store }}/versioned']
+          {{- end }}
+          {{- if eq (include "temporal.persistence.sql.driver" (list $ $store)) "postgres" }}
+          # command: ["temporal-sql-tool", "update-schema", "-d", "/etc/temporal/schema/postgresql/v96/{{ include "temporal.persistence.schema" $store }}/versioned"]
+          command: ['sh', '-c', 'temporal-sql-tool update-schema -d /etc/temporal/schema/postgresql/v96/{{ include "temporal.persistence.schema" $store }}/versioned']
+          {{- end }}
           {{- end }}
           env:
             {{- if eq (include "temporal.persistence.driver" (list $ $store)) "cassandra" }}
@@ -182,7 +244,37 @@ spec:
             {{- end }}
             {{- if $storeConfig.cassandra.password }}
             - name: CASSANDRA_PASSWORD
-              value: {{ $storeConfig.cassandra.password }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "temporal.persistence.secretName" (list $ $store) }}
+                  key: {{ include "temporal.persistence.secretKey" (list $ $store) }}
+            {{- end }}
+            {{- end }}
+            {{- if eq (include "temporal.persistence.driver" (list $ $store)) "sql" }}
+            - name: SQL_HOST
+              value: {{ include "temporal.persistence.sql.host" (list $ $store) }}
+            - name: SQL_PORT
+              value: {{ include "temporal.persistence.sql.port" (list $ $store) | quote }}
+            - name: SQL_PLUGIN
+              value: {{ $storeConfig.sql.driver }}
+            {{- if $storeConfig.sql.user }}
+            - name: SQL_USER
+              value: {{ $storeConfig.sql.user }}
+            {{- end }}
+            {{- if $storeConfig.sql.password }}
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "temporal.persistence.secretName" (list $ $store) }}
+                  key: {{ include "temporal.persistence.secretKey" (list $ $store) }}
+            {{- end }}
+            {{- if eq $store "default" }}
+            - name: SQL_DATABASE
+              value: temporal
+            {{- end }}
+            {{- if eq $store "visibility" }}
+            - name: SQL_DATABASE
+              value: temporal_visibility
             {{- end }}
             {{- end }}
         {{- end }}
